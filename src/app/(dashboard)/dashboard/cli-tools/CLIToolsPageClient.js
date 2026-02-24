@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardSkeleton } from "@/shared/components";
 import { CLI_TOOLS } from "@/shared/constants/cliTools";
 import { PROVIDER_MODELS, getModelsByProviderId, PROVIDER_ID_TO_ALIAS } from "@/shared/constants/models";
-import { ClaudeToolCard, CodexToolCard, DroidToolCard, OpenClawToolCard, DefaultToolCard, AntigravityToolCard } from "./components";
+import { ClaudeToolCard, CodexToolCard, DroidToolCard, OpenClawToolCard, DefaultToolCard, AntigravityToolCard, FirebenderToolCard } from "./components";
 
 const CLOUD_URL = process.env.NEXT_PUBLIC_CLOUD_URL;
 
@@ -107,7 +107,7 @@ export default function CLIToolsPageClient({ machineId }) {
     const activeProviders = getActiveProviders();
     const models = [];
     const seenModels = new Set();
-    
+
     activeProviders.forEach(conn => {
       const alias = PROVIDER_ID_TO_ALIAS[conn.provider] || conn.provider;
       const providerModels = getModelsByProviderId(conn.provider);
@@ -126,7 +126,7 @@ export default function CLIToolsPageClient({ machineId }) {
         }
       });
     });
-    
+
     return models;
   };
 
@@ -205,6 +205,8 @@ export default function CLIToolsPageClient({ machineId }) {
         return <OpenClawToolCard key={toolId} {...commonProps} activeProviders={getActiveProviders()} hasActiveProviders={hasActiveProviders} cloudEnabled={cloudEnabled} initialStatus={toolStatuses.openclaw} />;
       case "antigravity":
         return <AntigravityToolCard key={toolId} {...commonProps} activeProviders={getActiveProviders()} hasActiveProviders={hasActiveProviders} cloudEnabled={cloudEnabled} initialStatus={toolStatuses.antigravity} />;
+      case "firebender":
+        return <FirebenderToolCard key={toolId} {...commonProps} activeProviders={getActiveProviders()} hasActiveProviders={hasActiveProviders} cloudEnabled={cloudEnabled} initialStatus={toolStatuses.firebender} />;
       default:
         return <DefaultToolCard key={toolId} toolId={toolId} {...commonProps} activeProviders={getActiveProviders()} cloudEnabled={cloudEnabled} />;
     }

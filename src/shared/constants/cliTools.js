@@ -138,6 +138,21 @@ export const CLI_TOOLS = {
       { id: "gpt-oss-120b-medium", name: "GPT OSS 120B Medium", alias: "gpt-oss-120b-medium" },
     ],
   },
+  firebender: {
+    id: "firebender",
+    name: "Firebender",
+    image: "/providers/firebender.svg",
+    color: "#FF5722",
+    description: "Firebender Code Assistant mappings",
+    configType: "dynamic-mapping",
+    defaultOriginModels: [
+      "claude-sonnet-4-5-20250929",
+      "claude-sonnet-4-6",
+      "gpt-5.2-pro",
+      "gpt-5.2",
+      "gpt-5.2-codex-high"
+    ]
+  },
   // HIDDEN: gemini-cli
   // "gemini-cli": {
   //   id: "gemini-cli",
