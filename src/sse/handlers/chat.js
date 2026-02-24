@@ -46,13 +46,29 @@ export async function handleChat(request, clientRawRequest = null) {
 
   // Log request endpoint and model
   const url = new URL(request.url);
-  const modelStr = body.model;
+
+  let modelStr = body.model;
+
+  // --- FIREBENDER INTERCEPTION ---
+  const bodyString = JSON.stringify(body);
+  if (bodyString.includes("firebender.com")) {
+    const firebenderAliases = await getMitmAlias("firebender");
+    if (firebenderAliases && firebenderAliases[modelStr]) {
+      const mappedModel = firebenderAliases[modelStr];
+      log.info("ROUTING", `🔥 Firebender alias match: ${modelStr} → ${mappedModel}`);
+      body.model = mappedModel;
+      modelStr = mappedModel;
+    }
+  }
 
   // Count messages (support both messages[] and input[] formats)
   const msgCount = body.messages?.length || body.input?.length || 0;
   const toolCount = body.tools?.length || 0;
   const effort = body.reasoning_effort || body.reasoning?.effort || null;
   log.request("POST", `${url.pathname} | ${modelStr} | ${msgCount} msgs${toolCount ? ` | ${toolCount} tools` : ""}${effort ? ` | effort=${effort}` : ""}`);
+
+  // Log full request for debugging
+  console.log("Full request body:", JSON.stringify(body, null, 2));
 
   // Log API key (masked)
   const authHeader = request.headers.get("Authorization");

@@ -63,7 +63,7 @@ export function error(tag, message, data) {
 
 export function request(method, path, extra) {
   const data = extra ? ` | ${formatInline(extra)}` : "";
-  console.log(`[${formatTime()}] 📥 ${method} ${path}${data}`);
+  console.log(` hehehe [${formatTime()}] 📥 ${method} ${path}${data}`);
 }
 
 export function response(status, duration, extra) {

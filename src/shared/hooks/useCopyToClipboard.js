@@ -12,7 +12,27 @@ export function useCopyToClipboard(resetDelay = 2000) {
   const timeoutRef = useRef(null);
 
   const copy = useCallback((text, id = "default") => {
-    navigator.clipboard.writeText(text);
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text);
+    } else {
+      // Fallback for non-HTTPS environments (like local network IP testing)
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      // Make it invisible
+      textArea.style.position = "absolute";
+      textArea.style.opacity = "0";
+      textArea.style.left = "-999999px";
+      document.body.prepend(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+      } catch (error) {
+        console.error("Fallback copy failed", error);
+      } finally {
+        textArea.remove();
+      }
+    }
+
     setCopied(id);
 
     if (timeoutRef.current) {
