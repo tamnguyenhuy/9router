@@ -40,7 +40,7 @@ export function info(tag, message, data) {
 export function warn(tag, message, data) {
   if (LEVEL <= LOG_LEVELS.WARN) {
     const dataStr = data ? ` ${formatData(data)}` : "";
-    // console.warn(`[${formatTime()}] ⚠️  [${tag}] ${message}${dataStr}`);
+    console.warn(`[${formatTime()}] ⚠️  [${tag}] ${message}${dataStr}`);
   }
 }
 
@@ -53,7 +53,7 @@ export function error(tag, message, data) {
 
 export function request(method, path, extra) {
   const dataStr = extra ? ` ${formatData(extra)}` : "";
-  console.log(`\x1b[36m[${formatTime()}] 📥 ${method} ${path}${dataStr}\x1b[0m`);
+  console.log(` hehehe \x1b[36m[${formatTime()}] 📥 ${method} ${path}${dataStr}\x1b[0m`);
 }
 
 export function response(status, duration, extra) {

@@ -16,6 +16,7 @@ export async function resolveModelAlias(alias) {
  * Get full model info (parse or resolve)
  */
 export async function getModelInfo(modelStr) {
+  console.log("getModelInfo modelStr", modelStr);
   const parsed = parseModel(modelStr);
 
   if (!parsed.isAlias) {
