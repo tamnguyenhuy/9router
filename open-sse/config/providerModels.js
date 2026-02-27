@@ -110,6 +110,13 @@ export const PROVIDER_MODELS = {
     { id: "claude-4.5-haiku", name: "Claude 4.5 Haiku" },
     { id: "claude-4.5-opus", name: "Claude 4.5 Opus" },
     { id: "gpt-5.2-codex", name: "GPT 5.2 Codex" },
+    { id: "claude-4.6-opus-max", name: "Claude 4.6 Opus Max" },
+    { id: "claude-4.6-sonnet-medium-thinking", name: "Claude 4.6 Sonnet Medium Thinking" },
+    { id: "kimi-k2.5", name: "Kimi K2.5" },
+    { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview" },
+    { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview" },
+    { id: "gpt-5.2", name: "GPT 5.2" },
+    { id: "gpt-5.3-codex", name: "GPT 5.3 Codex" },
   ],
   kmc: [  // Kimi Coding
     { id: "kimi-k2.5", name: "Kimi K2.5" },
@@ -185,6 +192,16 @@ export const PROVIDER_MODELS = {
   "minimax-cn": [
     { id: "MiniMax-M2.5", name: "MiniMax M2.5" },
     { id: "MiniMax-M2.1", name: "MiniMax M2.1" },
+  ],
+  alicode: [
+    { id: "qwen3.5-plus", name: "Qwen3.5 Plus" },
+    { id: "kimi-k2.5", name: "Kimi K2.5" },
+    { id: "glm-5", name: "GLM 5" },
+    { id: "MiniMax-M2.5", name: "MiniMax M2.5" },
+    { id: "qwen3-max-2026-01-23", name: "Qwen3 Max" },
+    { id: "qwen3-coder-next", name: "Qwen3 Coder Next" },
+    { id: "qwen3-coder-plus", name: "Qwen3 Coder Plus" },
+    { id: "glm-4.7", name: "GLM 4.7" },
   ],
   deepseek: [
     { id: "deepseek-chat", name: "DeepSeek V3.2 Chat" },
@@ -324,6 +341,7 @@ export const PROVIDER_ID_TO_ALIAS = {
   kimi: "kimi",
   minimax: "minimax",
   "minimax-cn": "minimax-cn",
+  alicode: "alicode",
   deepseek: "deepseek",
   groq: "groq",
   xai: "xai",

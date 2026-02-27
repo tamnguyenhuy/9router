@@ -164,8 +164,8 @@ export const PROVIDERS = {
   },
   antigravity: {
     baseUrls: [
+      "https://daily-cloudcode-pa.googleapis.com",
       "https://cloudcode-pa.googleapis.com",
-      "https://daily-cloudcode-pa.googleapis.com"
     ],
     format: "antigravity",
     headers: {
@@ -222,6 +222,11 @@ export const PROVIDERS = {
       "Anthropic-Version": "2023-06-01",
       "Anthropic-Beta": "claude-code-20250219,interleaved-thinking-2025-05-14"
     }
+  },
+  alicode: {
+    baseUrl: "https://coding.dashscope.aliyuncs.com/v1/chat/completions",
+    format: "openai",
+    headers: {}
   },
   github: {
     baseUrl: "https://api.githubcopilot.com/chat/completions", // GitHub Copilot API endpoint for chat
