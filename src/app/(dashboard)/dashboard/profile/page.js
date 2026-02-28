@@ -16,12 +16,25 @@ export default function ProfilePage() {
   const [dbLoading, setDbLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState({ type: "", message: "" });
   const importFileRef = useRef(null);
+  const [proxyForm, setProxyForm] = useState({
+    outboundProxyEnabled: false,
+    outboundProxyUrl: "",
+    outboundNoProxy: "",
+  });
+  const [proxyStatus, setProxyStatus] = useState({ type: "", message: "" });
+  const [proxyLoading, setProxyLoading] = useState(false);
+  const [proxyTestLoading, setProxyTestLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
       .then((res) => res.json())
       .then((data) => {
         setSettings(data);
+        setProxyForm({
+          outboundProxyEnabled: data?.outboundProxyEnabled === true,
+          outboundProxyUrl: data?.outboundProxyUrl || "",
+          outboundNoProxy: data?.outboundNoProxy || "",
+        });
         setLoading(false);
       })
       .catch((err) => {
@@ -29,6 +42,103 @@ export default function ProfilePage() {
         setLoading(false);
       });
   }, []);
+
+  const updateOutboundProxy = async (e) => {
+    e.preventDefault();
+    if (settings.outboundProxyEnabled !== true) return;
+    setProxyLoading(true);
+    setProxyStatus({ type: "", message: "" });
+
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          outboundProxyUrl: proxyForm.outboundProxyUrl,
+          outboundNoProxy: proxyForm.outboundNoProxy,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setSettings((prev) => ({ ...prev, ...data }));
+        setProxyStatus({ type: "success", message: "Proxy settings applied" });
+      } else {
+        setProxyStatus({ type: "error", message: data.error || "Failed to update proxy settings" });
+      }
+    } catch (err) {
+      setProxyStatus({ type: "error", message: "An error occurred" });
+    } finally {
+      setProxyLoading(false);
+    }
+  };
+
+  const testOutboundProxy = async () => {
+    if (settings.outboundProxyEnabled !== true) return;
+
+    const proxyUrl = (proxyForm.outboundProxyUrl || "").trim();
+    if (!proxyUrl) {
+      setProxyStatus({ type: "error", message: "Please enter a Proxy URL to test" });
+      return;
+    }
+
+    setProxyTestLoading(true);
+    setProxyStatus({ type: "", message: "" });
+
+    try {
+      const res = await fetch("/api/settings/proxy-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proxyUrl }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data?.ok) {
+        setProxyStatus({
+          type: "success",
+          message: `Proxy test OK (${data.status}) in ${data.elapsedMs}ms`,
+        });
+      } else {
+        setProxyStatus({
+          type: "error",
+          message: data?.error || "Proxy test failed",
+        });
+      }
+    } catch (err) {
+      setProxyStatus({ type: "error", message: "An error occurred" });
+    } finally {
+      setProxyTestLoading(false);
+    }
+  };
+
+  const updateOutboundProxyEnabled = async (outboundProxyEnabled) => {
+    setProxyLoading(true);
+    setProxyStatus({ type: "", message: "" });
+
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outboundProxyEnabled }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setSettings((prev) => ({ ...prev, ...data }));
+        setProxyForm((prev) => ({ ...prev, outboundProxyEnabled: data?.outboundProxyEnabled === true }));
+        setProxyStatus({
+          type: "success",
+          message: outboundProxyEnabled ? "Proxy enabled" : "Proxy disabled",
+        });
+      } else {
+        setProxyStatus({ type: "error", message: data.error || "Failed to update proxy settings" });
+      }
+    } catch (err) {
+      setProxyStatus({ type: "error", message: "An error occurred" });
+    } finally {
+      setProxyLoading(false);
+    }
+  };
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -229,19 +339,74 @@ export default function ProfilePage() {
       <div className="flex flex-col gap-6">
         {/* Local Mode Info */}
         <Card>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="size-12 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center">
-              <span className="material-symbols-outlined text-2xl">computer</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="size-12 rounded-lg bg-green-500/10 text-green-500 flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">computer</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">Local Mode</h2>
+                <p className="text-text-muted">Running on your machine</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-semibold">Local Mode</h2>
-              <p className="text-text-muted">Running on your machine</p>
+            <div className="inline-flex p-1 rounded-lg bg-black/5 dark:bg-white/5">
+              {["light", "dark", "system"].map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setTheme(option)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-all",
+                    theme === option
+                      ? "bg-white dark:bg-white/10 text-text-main shadow-sm"
+                      : "text-text-muted hover:text-text-main"
+                  )}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    {option === "light" ? "light_mode" : option === "dark" ? "dark_mode" : "contrast"}
+                  </span>
+                  <span className="capitalize text-sm">{option}</span>
+                </button>
+              ))}
             </div>
           </div>
-          <div className="pt-4 border-t border-border">
-            <p className="text-sm text-text-muted">
-              All data is stored locally in the <code className="bg-sidebar px-1 rounded">~/.9router/db.json</code> file.
-            </p>
+          <div className="flex flex-col gap-3 pt-4 border-t border-border">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-bg border border-border">
+              <div>
+                <p className="font-medium">Database Location</p>
+                <p className="text-sm text-text-muted font-mono">~/.9router/db.json</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                icon="download"
+                onClick={handleExportDatabase}
+                loading={dbLoading}
+              >
+                Download Backup
+              </Button>
+              <Button
+                variant="outline"
+                icon="upload"
+                onClick={() => importFileRef.current?.click()}
+                disabled={dbLoading}
+              >
+                Import Backup
+              </Button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={handleImportDatabase}
+              />
+            </div>
+            {dbStatus.message && (
+              <p className={`text-sm ${dbStatus.type === "error" ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
+                {dbStatus.message}
+              </p>
+            )}
           </div>
         </Card>
 
@@ -379,97 +544,72 @@ export default function ProfilePage() {
           </div>
         </Card>
 
-        {/* Theme Preferences */}
+        {/* Network */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
-              <span className="material-symbols-outlined text-[20px]">palette</span>
+              <span className="material-symbols-outlined text-[20px]">wifi</span>
             </div>
-            <h3 className="text-lg font-semibold">Appearance</h3>
+            <h3 className="text-lg font-semibold">Network</h3>
           </div>
+
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Dark Mode</p>
-                <p className="text-sm text-text-muted">
-                  Switch between light and dark themes
-                </p>
+                <p className="font-medium">Outbound Proxy</p>
+                <p className="text-sm text-text-muted">Enable proxy for OAuth + provider outbound requests.</p>
               </div>
               <Toggle
-                checked={isDark}
-                onChange={() => setTheme(isDark ? "light" : "dark")}
+                checked={settings.outboundProxyEnabled === true}
+                onChange={() => updateOutboundProxyEnabled(!(settings.outboundProxyEnabled === true))}
+                disabled={loading || proxyLoading}
               />
             </div>
 
-            {/* Theme Options */}
-            <div className="pt-4 border-t border-border">
-              <div className="inline-flex p-1 rounded-lg bg-black/5 dark:bg-white/5">
-                {["light", "dark", "system"].map((option) => (
-                  <button
-                    key={option}
+            {settings.outboundProxyEnabled === true && (
+              <form onSubmit={updateOutboundProxy} className="flex flex-col gap-4 pt-2 border-t border-border/50">
+                <div className="flex flex-col gap-2">
+                  <label className="font-medium">Proxy URL</label>
+                  <Input
+                    placeholder="http://127.0.0.1:7897"
+                    value={proxyForm.outboundProxyUrl}
+                    onChange={(e) => setProxyForm((prev) => ({ ...prev, outboundProxyUrl: e.target.value }))}
+                    disabled={loading || proxyLoading}
+                  />
+                  <p className="text-sm text-text-muted">Leave empty to inherit existing env proxy (if any).</p>
+                </div>
+
+                <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
+                  <label className="font-medium">No Proxy</label>
+                  <Input
+                    placeholder="localhost,127.0.0.1"
+                    value={proxyForm.outboundNoProxy}
+                    onChange={(e) => setProxyForm((prev) => ({ ...prev, outboundNoProxy: e.target.value }))}
+                    disabled={loading || proxyLoading}
+                  />
+                  <p className="text-sm text-text-muted">Comma-separated hostnames/domains to bypass the proxy.</p>
+                </div>
+
+                <div className="pt-2 border-t border-border/50 flex items-center gap-2">
+                  <Button
                     type="button"
-                    onClick={() => setTheme(option)}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all",
-                      theme === option
-                        ? "bg-white dark:bg-white/10 text-text-main shadow-sm"
-                        : "text-text-muted hover:text-text-main"
-                    )}
+                    variant="secondary"
+                    loading={proxyTestLoading}
+                    disabled={loading || proxyLoading}
+                    onClick={testOutboundProxy}
                   >
-                    <span className="material-symbols-outlined text-[20px]">
-                      {option === "light" ? "light_mode" : option === "dark" ? "dark_mode" : "contrast"}
-                    </span>
-                    <span className="capitalize">{option}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
+                    Test proxy URL
+                  </Button>
+                  <Button type="submit" variant="primary" loading={proxyLoading}>
+                    Apply
+                  </Button>
+                </div>
+              </form>
+            )}
 
-        {/* Data Management */}
-        <Card>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-green-500/10 text-green-500">
-              <span className="material-symbols-outlined text-[20px]">database</span>
-            </div>
-            <h3 className="text-lg font-semibold">Data</h3>
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-bg border border-border">
-              <div>
-                <p className="font-medium">Database Location</p>
-                <p className="text-sm text-text-muted font-mono">~/.9router/db.json</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="secondary"
-                icon="download"
-                onClick={handleExportDatabase}
-                loading={dbLoading}
-              >
-                Download Backup
-              </Button>
-              <Button
-                variant="outline"
-                icon="upload"
-                onClick={() => importFileRef.current?.click()}
-                disabled={dbLoading}
-              >
-                Import Backup
-              </Button>
-              <input
-                ref={importFileRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={handleImportDatabase}
-              />
-            </div>
-            {dbStatus.message && (
-              <p className={`text-sm ${dbStatus.type === "error" ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
-                {dbStatus.message}
+            {proxyStatus.message && (
+              <p className={`text-sm ${proxyStatus.type === "error" ? "text-red-500" : "text-green-500"} pt-2 border-t border-border/50`}>
+                {proxyStatus.message}
               </p>
             )}
           </div>

@@ -24,6 +24,9 @@ export default function ProviderDetailPage() {
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [modelAliases, setModelAliases] = useState({});
   const [headerImgError, setHeaderImgError] = useState(false);
+  const [modelTestResults, setModelTestResults] = useState({});
+  const [testingModelId, setTestingModelId] = useState(null);
+  const [showAddCustomModel, setShowAddCustomModel] = useState(false);
   const { copied, copy } = useCopyToClipboard();
 
   const providerInfo = providerNode
@@ -256,6 +259,24 @@ export default function ProviderDetailPage() {
     }
   };
 
+  const handleTestModel = async (modelId) => {
+    if (testingModelId) return;
+    setTestingModelId(modelId);
+    try {
+      const res = await fetch("/api/models/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: `${providerStorageAlias}/${modelId}` }),
+      });
+      const data = await res.json();
+      setModelTestResults((prev) => ({ ...prev, [modelId]: data.ok ? "ok" : "error" }));
+    } catch {
+      setModelTestResults((prev) => ({ ...prev, [modelId]: "error" }));
+    } finally {
+      setTestingModelId(null);
+    }
+  };
+
   const renderModelsSection = () => {
     if (isCompatible) {
       return (
@@ -284,9 +305,21 @@ export default function ProviderDetailPage() {
         />
       );
     }
-    if (models.length === 0) {
-      return <p className="text-sm text-text-muted">No models configured</p>;
-    }
+    // Custom models added by user (stored as aliases: modelId → providerAlias/modelId)
+    const customModels = Object.entries(modelAliases)
+      .filter(([alias, fullModel]) => {
+        const prefix = `${providerStorageAlias}/`;
+        if (!fullModel.startsWith(prefix)) return false;
+        const modelId = fullModel.slice(prefix.length);
+        // Only show if not already in hardcoded list
+        return !models.some((m) => m.id === modelId) && alias === modelId;
+      })
+      .map(([alias, fullModel]) => ({
+        id: fullModel.slice(`${providerStorageAlias}/`.length),
+        alias,
+        fullModel,
+      }));
+
     return (
       <div className="flex flex-wrap gap-3">
         {models.map((model) => {
@@ -305,9 +338,36 @@ export default function ProviderDetailPage() {
               onCopy={copy}
               onSetAlias={(alias) => handleSetAlias(model.id, alias, providerStorageAlias)}
               onDeleteAlias={() => handleDeleteAlias(existingAlias)}
+              testStatus={modelTestResults[model.id]}
+              onTest={connections.length > 0 ? () => handleTestModel(model.id) : undefined}
+              isTesting={testingModelId === model.id}
             />
           );
         })}
+
+        {/* Custom models inline */}
+        {customModels.map((model) => (
+          <ModelRow
+            key={model.id}
+            model={{ id: model.id }}
+            fullModel={`${providerDisplayAlias}/${model.id}`}
+            alias={model.alias}
+            copied={copied}
+            onCopy={copy}
+            onSetAlias={() => {}}
+            onDeleteAlias={() => handleDeleteAlias(model.alias)}
+            isCustom
+          />
+        ))}
+
+        {/* Add model button — inline, same style as model chips */}
+        <button
+          onClick={() => setShowAddCustomModel(true)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-black/15 dark:border-white/15 text-xs text-text-muted hover:text-primary hover:border-primary/40 transition-colors"
+        >
+          <span className="material-symbols-outlined text-sm">add</span>
+          Add Model
+        </button>
       </div>
     );
   };
@@ -494,11 +554,12 @@ export default function ProviderDetailPage() {
 
       {/* Models */}
       <Card>
-        <h2 className="text-lg font-semibold mb-4">
-          {providerInfo.passthroughModels ? "Model Aliases" : "Available Models"}
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">
+            {providerInfo.passthroughModels ? "Model Aliases" : "Available Models"}
+          </h2>
+        </div>
         {renderModelsSection()}
-
       </Card>
 
       {/* Modals */}
@@ -548,15 +609,56 @@ export default function ProviderDetailPage() {
           isAnthropic={isAnthropicCompatible}
         />
       )}
+      {!isCompatible && !providerInfo?.passthroughModels && (
+        <AddCustomModelModal
+          isOpen={showAddCustomModel}
+          providerAlias={providerStorageAlias}
+          providerDisplayAlias={providerDisplayAlias}
+          onSave={async (modelId) => {
+            await handleSetAlias(modelId, modelId, providerStorageAlias);
+            setShowAddCustomModel(false);
+          }}
+          onClose={() => setShowAddCustomModel(false)}
+        />
+      )}
     </div>
   );
 }
 
-function ModelRow({ model, fullModel, alias, copied, onCopy }) {
+function ModelRow({ model, fullModel, alias, copied, onCopy, testStatus, isCustom, onDeleteAlias, onTest, isTesting }) {
+  const borderColor = testStatus === "ok"
+    ? "border-green-500/40"
+    : testStatus === "error"
+    ? "border-red-500/40"
+    : "border-border";
+
+  const iconColor = testStatus === "ok"
+    ? "#22c55e"
+    : testStatus === "error"
+    ? "#ef4444"
+    : undefined;
+
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border hover:bg-sidebar/50">
-      <span className="material-symbols-outlined text-base text-text-muted">smart_toy</span>
+    <div className={`group flex items-center gap-2 px-3 py-2 rounded-lg border ${borderColor} hover:bg-sidebar/50`}>
+      <span
+        className="material-symbols-outlined text-base"
+        style={iconColor ? { color: iconColor } : undefined}
+      >
+        {testStatus === "ok" ? "check_circle" : testStatus === "error" ? "cancel" : "smart_toy"}
+      </span>
       <code className="text-xs text-text-muted font-mono bg-sidebar px-1.5 py-0.5 rounded">{fullModel}</code>
+      {onTest && (
+        <button
+          onClick={onTest}
+          disabled={isTesting}
+          className={`p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary transition-opacity ${isTesting ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          title="Test model"
+        >
+          <span className="material-symbols-outlined text-sm" style={isTesting ? { animation: "spin 1s linear infinite" } : undefined}>
+            {isTesting ? "progress_activity" : "science"}
+          </span>
+        </button>
+      )}
       <button
         onClick={() => onCopy(fullModel, `model-${model.id}`)}
         className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary"
@@ -566,6 +668,15 @@ function ModelRow({ model, fullModel, alias, copied, onCopy }) {
           {copied === `model-${model.id}` ? "check" : "content_copy"}
         </span>
       </button>
+      {isCustom && (
+        <button
+          onClick={onDeleteAlias}
+          className="p-0.5 hover:bg-red-500/10 rounded text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-auto"
+          title="Remove custom model"
+        >
+          <span className="material-symbols-outlined text-sm">close</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -578,6 +689,11 @@ ModelRow.propTypes = {
   alias: PropTypes.string,
   copied: PropTypes.string,
   onCopy: PropTypes.func.isRequired,
+  testStatus: PropTypes.oneOf(["ok", "error"]),
+  isCustom: PropTypes.bool,
+  onDeleteAlias: PropTypes.func,
+  onTest: PropTypes.func,
+  isTesting: PropTypes.bool,
 };
 
 function PassthroughModelsSection({ providerAlias, modelAliases, copied, onCopy, onSetAlias, onDeleteAlias }) {
@@ -1498,3 +1614,116 @@ EditCompatibleNodeModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   isAnthropic: PropTypes.bool,
 };
+
+function AddCustomModelModal({ isOpen, providerAlias, providerDisplayAlias, onSave, onClose }) {
+  const [modelId, setModelId] = useState("");
+  const [testStatus, setTestStatus] = useState(null); // null | "testing" | "ok" | "error"
+  const [testError, setTestError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) { setModelId(""); setTestStatus(null); setTestError(""); }
+  }, [isOpen]);
+
+  const handleTest = async () => {
+    if (!modelId.trim()) return;
+    setTestStatus("testing");
+    setTestError("");
+    try {
+      const res = await fetch("/api/models/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: `${providerAlias}/${modelId.trim()}` }),
+      });
+      const data = await res.json();
+      setTestStatus(data.ok ? "ok" : "error");
+      setTestError(data.error || "");
+    } catch (err) {
+      setTestStatus("error");
+      setTestError(err.message);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!modelId.trim() || saving) return;
+    setSaving(true);
+    try {
+      await onSave(modelId.trim());
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") handleTest();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Add Custom Model">
+      <div className="flex flex-col gap-4">
+        <div>
+          <label className="text-sm font-medium mb-1.5 block">Model ID</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={modelId}
+              onChange={(e) => { setModelId(e.target.value); setTestStatus(null); setTestError(""); }}
+              onKeyDown={handleKeyDown}
+              placeholder="e.g. claude-opus-4-5"
+              className="flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
+              autoFocus
+            />
+            <Button
+              variant="secondary"
+              icon="science"
+              loading={testStatus === "testing"}
+              onClick={handleTest}
+              disabled={!modelId.trim() || testStatus === "testing"}
+            >
+              {testStatus === "testing" ? "Testing..." : "Test"}
+            </Button>
+          </div>
+          <p className="text-xs text-text-muted mt-1">
+            Sent to provider as: <code className="font-mono bg-sidebar px-1 rounded">{modelId.trim() || "model-id"}</code>
+          </p>
+        </div>
+
+        {/* Test result */}
+        {testStatus === "ok" && (
+          <div className="flex items-center gap-2 text-sm text-green-600">
+            <span className="material-symbols-outlined text-base">check_circle</span>
+            Model is reachable
+          </div>
+        )}
+        {testStatus === "error" && (
+          <div className="flex items-start gap-2 text-sm text-red-500">
+            <span className="material-symbols-outlined text-base shrink-0">cancel</span>
+            <span>{testError || "Model not reachable"}</span>
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <Button onClick={onClose} variant="ghost" fullWidth size="sm">Cancel</Button>
+          <Button
+            onClick={handleSave}
+            fullWidth
+            size="sm"
+            disabled={!modelId.trim() || saving}
+          >
+            {saving ? "Adding..." : "Add Model"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+AddCustomModelModal.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  providerAlias: PropTypes.string.isRequired,
+  providerDisplayAlias: PropTypes.string.isRequired,
+  onSave: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+};
+
