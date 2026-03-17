@@ -205,18 +205,39 @@ export async function getUsageDb() {
       await dbInstance.read();
     } catch (error) {
       if (error instanceof SyntaxError) {
-        console.warn('[DB] Corrupt Usage JSON detected, resetting to defaults...');
-        dbInstance.data = defaultData;
-        await dbInstance.write();
+        const isBuildPhase = typeof process !== 'undefined' && 
+           (process.env.NEXT_PHASE === 'phase-production-build' || 
+            process.argv.some(arg => arg.includes('next-render-worker') || arg.includes('next-path-fetcher')));
+
+        if (isBuildPhase) {
+          console.warn('[usageDb] Ignoring SyntaxError during build phase.');
+          dbInstance.data = defaultData;
+        } else {
+          console.warn('[DB] Corrupt Usage JSON detected, resetting to defaults...');
+          dbInstance.data = defaultData;
+          try {
+            await dbInstance.write();
+          } catch (writeErr) {
+            if (writeErr.code !== 'ENOENT' || writeErr.syscall !== 'rename') throw writeErr;
+          }
+        }
       } else {
         throw error;
       }
     }
 
     // Initialize with default data if empty
-    if (!dbInstance.data) {
-      dbInstance.data = defaultData;
-      await dbInstance.write();
+    try {
+      if (!dbInstance.data) {
+        dbInstance.data = defaultData;
+        await dbInstance.write();
+      }
+    } catch (err) {
+      if (err.code === 'ENOENT' && err.syscall === 'rename') {
+        console.warn('[usageDb] Handled concurrent initialization write.');
+      } else {
+        throw err;
+      }
     }
   }
   return dbInstance;
