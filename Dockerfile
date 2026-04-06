@@ -46,6 +46,8 @@ RUN apk --no-cache upgrade && apk --no-cache add su-exec && \
   printf '#!/bin/sh\nchown -R node:node /app/data /app/data-home 2>/dev/null\nexec su-exec node "$@"\n' > /entrypoint.sh && \
   chmod +x /entrypoint.sh
 
+RUN npm install -g @anthropic-ai/claude-code
+
 EXPOSE 20128
 
 ENTRYPOINT ["/entrypoint.sh"]
