@@ -80,6 +80,9 @@ jobs:
               --name 9router \
               --restart unless-stopped \
               -p 127.0.0.1:20128:20128 \
+              -v 9router_data:/app/data \
+              -v 9router_home:/home/node \
+              -v 9router_root:/root \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
             # Cleanup old dangling images
