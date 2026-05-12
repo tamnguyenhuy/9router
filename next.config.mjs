@@ -15,7 +15,6 @@ const nextConfig = {
   turbopack: {
     root: tracingRoot
   },
-  outputFileTracingRoot: tracingRoot,
   outputFileTracingExcludes: {
     "*": ["./gitbook/**/*"]
   },
