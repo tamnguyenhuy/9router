@@ -51,6 +51,14 @@ export async function initializeApp() {
     await cleanupProviderConnections();
     const settings = await getSettings();
 
+    // Apply agent stream timeout from settings
+    if (settings.agentStreamTimeoutMs != null) {
+      try {
+        const { setStreamStallTimeoutMs } = await import("open-sse/config/runtimeConfig.js");
+        setStreamStallTimeoutMs(settings.agentStreamTimeoutMs);
+      } catch { /* ignore */ }
+    }
+
     // Auto-resume tunnel (once per process)
     if (settings.tunnelEnabled && !g.tunnelAutoResumed) {
       g.tunnelAutoResumed = true;

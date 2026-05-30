@@ -32,7 +32,29 @@ export const MEMORY_CONFIG = {
 };
 
 // Stream stall timeout: abort if no chunk received within this duration
-export const STREAM_STALL_TIMEOUT_MS = 30 * 1000;
+// Default 30s, overridable via AGENT_STREAM_TIMEOUT_MS env var.
+export const STREAM_STALL_TIMEOUT_MS =
+  parseInt(process.env.AGENT_STREAM_TIMEOUT_MS || "", 10) > 0
+    ? parseInt(process.env.AGENT_STREAM_TIMEOUT_MS, 10)
+    : 30 * 1000;
+
+// Runtime-overridable stream stall timeout (configurable from settings).
+// Falls back to STREAM_STALL_TIMEOUT_MS when not set.
+let _streamStallTimeoutMs = STREAM_STALL_TIMEOUT_MS;
+
+export function getStreamStallTimeoutMs() {
+  return _streamStallTimeoutMs;
+}
+
+export function setStreamStallTimeoutMs(ms) {
+  const n = Number(ms);
+  if (Number.isFinite(n) && n > 0) {
+    _streamStallTimeoutMs = n;
+  } else {
+    _streamStallTimeoutMs = STREAM_STALL_TIMEOUT_MS;
+  }
+  return _streamStallTimeoutMs;
+}
 
 // Fetch connect timeout: abort if upstream doesn't return response headers within this duration
 export const FETCH_CONNECT_TIMEOUT_MS = 20 * 1000;

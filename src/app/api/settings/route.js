@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
 import { applyOutboundProxyEnv } from "@/lib/network/outboundProxy";
 import { resetComboRotation } from "open-sse/services/combo.js";
+import { setStreamStallTimeoutMs } from "open-sse/config/runtimeConfig.js";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,11 @@ export async function PATCH(request) {
       Object.prototype.hasOwnProperty.call(body, "comboStrategies")
     ) {
       resetComboRotation();
+    }
+
+    // Apply agent stream timeout immediately (no restart required)
+    if (Object.prototype.hasOwnProperty.call(body, "agentStreamTimeoutMs")) {
+      setStreamStallTimeoutMs(settings.agentStreamTimeoutMs);
     }
 
     const { password, oidcClientSecret, ...safeSettings } = settings;

@@ -38,6 +38,9 @@ export default function ProfilePage() {
   const [proxyStatus, setProxyStatus] = useState({ type: "", message: "" });
   const [proxyLoading, setProxyLoading] = useState(false);
   const [proxyTestLoading, setProxyTestLoading] = useState(false);
+  const [streamTimeoutInput, setStreamTimeoutInput] = useState("30");
+  const [streamTimeoutStatus, setStreamTimeoutStatus] = useState({ type: "", message: "" });
+  const [streamTimeoutLoading, setStreamTimeoutLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -58,6 +61,7 @@ export default function ProfilePage() {
           outboundProxyUrl: data?.outboundProxyUrl || "",
           outboundNoProxy: data?.outboundNoProxy || "",
         });
+        setStreamTimeoutInput(String(Math.round((data?.agentStreamTimeoutMs ?? 30000) / 1000)));
         setLoading(false);
       })
       .catch((err) => {
@@ -434,6 +438,35 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error("Failed to update enableObservability:", err);
+    }
+  };
+
+  const saveStreamTimeout = async () => {
+    const seconds = Number(streamTimeoutInput);
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      setStreamTimeoutStatus({ type: "error", message: "Enter a positive number of seconds" });
+      return;
+    }
+    const agentStreamTimeoutMs = Math.round(seconds * 1000);
+    setStreamTimeoutLoading(true);
+    setStreamTimeoutStatus({ type: "", message: "" });
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentStreamTimeoutMs }),
+      });
+      if (res.ok) {
+        setSettings(prev => ({ ...prev, agentStreamTimeoutMs }));
+        setStreamTimeoutStatus({ type: "success", message: "Stream timeout saved" });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setStreamTimeoutStatus({ type: "error", message: data.error || "Failed to save stream timeout" });
+      }
+    } catch (err) {
+      setStreamTimeoutStatus({ type: "error", message: "An error occurred" });
+    } finally {
+      setStreamTimeoutLoading(false);
     }
   };
 
@@ -1021,6 +1054,39 @@ export default function ProfilePage() {
               onChange={updateObservabilityEnabled}
               disabled={loading}
             />
+          </div>
+
+          <div className="flex flex-col gap-2 pt-4 mt-4 border-t border-border/50">
+            <label className="font-medium text-sm sm:text-base">Agent Stream Timeout</label>
+            <p className="text-xs sm:text-sm text-text-muted">
+              Abort a streaming response when no data is received from the provider within this duration (in seconds).
+            </p>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <Input
+                type="number"
+                min="1"
+                placeholder="30"
+                value={streamTimeoutInput}
+                onChange={(e) => setStreamTimeoutInput(e.target.value)}
+                disabled={loading || streamTimeoutLoading}
+                className="sm:max-w-[160px]"
+              />
+              <Button
+                type="button"
+                variant="primary"
+                loading={streamTimeoutLoading}
+                disabled={loading}
+                onClick={saveStreamTimeout}
+                className="w-full sm:w-auto"
+              >
+                Save
+              </Button>
+            </div>
+            {streamTimeoutStatus.message && (
+              <p className={`text-xs sm:text-sm ${streamTimeoutStatus.type === "error" ? "text-red-500" : "text-green-500"}`}>
+                {streamTimeoutStatus.message}
+              </p>
+            )}
           </div>
         </Card>
 

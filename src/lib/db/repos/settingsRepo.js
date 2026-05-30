@@ -28,6 +28,9 @@ const DEFAULT_SETTINGS = {
   observabilityBatchSize: 20,
   observabilityFlushIntervalMs: 5000,
   observabilityMaxJsonSize: 5,
+  agentStreamTimeoutMs: parseInt(process.env.AGENT_STREAM_TIMEOUT_MS || "", 10) > 0
+    ? parseInt(process.env.AGENT_STREAM_TIMEOUT_MS, 10)
+    : 30000,
   outboundProxyEnabled: false,
   outboundProxyUrl: "",
   outboundNoProxy: "",
